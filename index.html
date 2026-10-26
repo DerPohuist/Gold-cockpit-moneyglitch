@@ -656,6 +656,9 @@ td.n,th.n{text-align:right;white-space:nowrap}
   const hex = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
   const open = () => document.getElementById('gate').remove();
   try { if (localStorage.getItem('gc-ok') === H) open(); } catch (e) {}
+  // Passwort im Link (#…) öffnet direkt, damit das Home-Bildschirm-Symbol nie fragt
+  const k = decodeURIComponent(location.hash.slice(1));
+  if (k && document.getElementById('gate')) hex(k).then((h) => { if (h === H) { try { localStorage.setItem('gc-ok', H); } catch (e) {} open(); } });
   const f = document.getElementById('gate-f');
   if (f) f.addEventListener('submit', async (e) => {
     e.preventDefault();
