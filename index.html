@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex,nofollow">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head><body>
+<title>Gold-Cockpit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-title" content="Gold-Cockpit">
+<meta name="theme-color" content="#0B1016">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@500;700;800&display=swap">
+<style>
+/* Layout: eine Spalte wie eine iPhone-App, oben Tagesampel, unten Reiterleiste. Market-Apollo-Look, bewusst nur dunkel. */
+:root{
+  --bg:#0B1016; --bg2:#0E151D; --panel:#131B24; --line:#2A3440;
+  --gold:#DEB971; --gold-soft:rgba(222,185,113,.14);
+  --fg:#F2F2EF; --muted:#B8C2CD; --dim:#7D8996;
+  --ok:#5BC48A; --ok-soft:rgba(91,196,138,.14);
+  --warn:#E8B04A; --warn-soft:rgba(232,176,74,.14);
+  --bad:#E36C6C; --bad-soft:rgba(227,108,108,.14);
+  --f-head:"Manrope",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --f-body:"Inter",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --r:14px; --tabh:64px;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.app{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px calc(var(--tabh) + env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;gap:14px}
+.num,td.n{font-variant-numeric:tabular-nums}
+
+/* Kopf */
+.top{display:flex;flex-direction:column;gap:10px;padding-block:6px 4px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-head);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:var(--gold)}
+.brand svg{flex:none}
+.brand .stand{margin-left:auto;font-family:var(--f-body);font-weight:400;letter-spacing:0;text-transform:none;color:var(--dim)}
+h1{font-family:var(--f-head);font-weight:700;font-size:26px;line-height:1.15;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0}
+.ampel{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
+.ampel .dot{width:14px;height:14px;border-radius:50%;background:var(--dim);flex:none;box-shadow:0 0 0 5px rgba(125,137,150,.15)}
+.ampel b{font-family:var(--f-head);font-size:18px;font-weight:800}
+.ampel[data-l="ok"] .dot{background:var(--ok);box-shadow:0 0 0 5px var(--ok-soft)}
+.ampel[data-l="warn"] .dot{background:var(--warn);box-shadow:0 0 0 5px var(--warn-soft)}
+.ampel[data-l="bad"] .dot{background:var(--bad);box-shadow:0 0 0 5px var(--bad-soft)}
+.ampel[data-l="ok"] b{color:var(--ok)} .ampel[data-l="warn"] b{color:var(--warn)} .ampel[data-l="bad"] b{color:var(--bad)}
+
+/* Karten */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h2{font-family:var(--f-head);font-weight:700;font-size:17px;margin:0;display:flex;align-items:baseline;gap:8px}
+.card h2 small{font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--dim);margin-left:auto}
+.note{color:var(--dim);font-size:12.5px;margin:0}
+.empty{color:var(--dim);font-size:14px;margin:0}
+.sec{display:flex;flex-direction:column;gap:14px}
+.label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600;margin:6px 0 -4px}
+
+/* Listen */
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0;padding-top:2px}
+.row .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13.5px;white-space:nowrap}
+.row .w{min-width:0}
+.row .x{grid-column:2/-1;color:var(--dim);font-size:13px}
+.kv{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:8px 14px;margin:0}
+.kv dt{color:var(--muted);font-size:13.5px}
+.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.hoch,.pill.bad{color:var(--bad);border-color:currentColor;background:var(--bad-soft)}
+.pill.mittel,.pill.warn{color:var(--warn);border-color:currentColor;background:var(--warn-soft)}
+.pill.ok{color:var(--ok);border-color:currentColor;background:var(--ok-soft)}
+.pill.gold{color:var(--gold);border-color:currentColor;background:var(--gold-soft)}
+/* Zonen-Stärke: je stärker, desto kräftiger grün (Kauf) oder rot (Verkauf) */
+.pill.stk3{background:var(--ok);border-color:var(--ok);color:var(--bg);font-weight:600}
+.pill.stk2{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.pill.stk1{border-color:rgba(91,196,138,.45);color:rgba(91,196,138,.8)}
+.pill.stv3{background:var(--bad);border-color:var(--bad);color:var(--bg);font-weight:600}
+.pill.stv2{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.pill.stv1{border-color:rgba(227,108,108,.45);color:rgba(227,108,108,.8)}
+.zone.zk3{background:rgba(91,196,138,.13)} .zone.zk2{background:rgba(91,196,138,.07)}
+.zone.zv3{background:rgba(227,108,108,.13)} .zone.zv2{background:rgba(227,108,108,.07)}
+.vgl td.ok{color:var(--ok)} .vgl td.no{color:var(--dim)}
+.pos{color:var(--ok)} .neg{color:var(--bad)} .warnc{color:var(--warn)} .test{color:var(--dim)}
+
+/* Zonen */
+.zone{display:flex;flex-direction:column;gap:4px;padding:12px 12px 12px 14px;border-radius:10px;background:var(--bg2);border-left:3px solid var(--line)}
+.zone.v{border-left-color:var(--bad)} .zone.k{border-left-color:var(--ok)}
+.zone .p{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.zone .p b{font-family:var(--f-head);font-size:17px;font-variant-numeric:tabular-nums}
+.zone .p span{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+.zone .p .pill{margin-left:auto}
+.zone p{margin:0;color:var(--muted);font-size:13.5px}
+.ladder svg{display:block}
+
+/* Tabellen */
+.tbox{overflow-x:auto;margin-inline:-4px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--dim);font-weight:500;font-size:11.5px;padding:4px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+
+/* Summen */
+.sums{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+.sum{background:var(--bg2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.sum span{font-size:11.5px;color:var(--dim)}
+.sum b{font-family:var(--f-head);font-size:20px;font-variant-numeric:tabular-nums}
+
+/* Makro */
+.makro{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.m{background:var(--bg2);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.m .n{font-size:12px;color:var(--dim)}
+.m .v{font-family:var(--f-head);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums}
+.m .wi{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.m p{margin:0;font-size:12.5px;color:var(--muted)}
+.news{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.news li{display:flex;flex-direction:column;gap:4px}
+.news .q{font-size:12px;color:var(--dim)}
+
+/* Struktur */
+.zweig h3{font-family:var(--f-head);font-size:14px;margin:6px 0 4px;color:var(--gold)}
+.item{padding:8px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.item span{color:var(--muted);font-size:13.5px}
+
+/* Reiterleiste */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,16,22,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tabs .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);height:var(--tabh)}
+.help{display:grid;gap:4px 0;margin:0}
+.help dt{font-family:var(--f-head);font-weight:700;color:var(--gold);font-size:14px;margin-top:8px}
+.help dt:first-child{margin-top:0}
+.help dd{margin:0;color:var(--muted);font-size:14px}
+.help b{color:var(--fg)}
+.tab{appearance:none;background:none;border:0;color:var(--dim);font:500 11px var(--f-body);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--gold)}
+.tab:focus-visible{outline:2px solid var(--gold);outline-offset:-4px;border-radius:10px}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.segb{appearance:none;border:0;background:none;color:var(--muted);font:600 14px var(--f-head);padding:10px 8px;border-radius:9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+.segb span{font:400 11.5px var(--f-body);color:var(--dim)}
+.segb[aria-selected="true"]{background:var(--gold-soft);color:var(--gold)}
+.segb:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.wait{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.skel{color:var(--dim)}
+@media (prefers-reduced-motion:no-preference){.sec{animation:in .22s ease-out}@keyframes in{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 L9 7 L15 7 L20 18 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 13 H17" stroke="currentColor" stroke-width="1.8"/></svg>
+      Gold-Cockpit
+      <span class="stand" id="stand">lädt …</span>
+    </div>
+    <h1 id="titel">Gold-Cockpit</h1>
+    <p class="sub" id="kurz">Die Daten aus dem Cockpit erscheinen hier, sobald das Morgen-Update gelaufen ist.</p>
+    <div class="ampel" id="ampel" data-l=""><span class="dot"></span><div><b id="ampeltext">—</b><div class="note">Tagesampel für den Handel</div></div></div>
+  </header>
+
+  <main>
+    <!-- HEUTE -->
+    <section class="sec" id="p-heute">
+      <div class="seg" role="tablist" aria-label="Tag wählen">
+        <button class="segb" id="s-rueck" data-v="rueck" aria-selected="false"><b id="s-rueck-rel">Rückblick</b> <span id="s-rueck-tag"></span></button>
+        <button class="segb" id="s-vor" data-v="vor" aria-selected="true"><b id="s-vor-rel">Vorschau</b> <span id="s-vor-tag"></span></button>
+      </div>
+      <div class="sec" id="v-rueck" hidden>
+        <div class="card">
+          <h2>Rückblick <small id="rb-datum"></small></h2>
+          <div class="ampel" id="rb-ampel" data-l=""><span class="dot"></span><div><b id="rb-ampeltext">—</b><div class="note" id="rb-kurz"></div></div></div>
+        </div>
+        <div class="card">
+          <h2>So lief der Tag</h2>
+          <div class="rows" id="rb-zeitplan"><p class="empty">Der Rückblick kommt mit der Abendrunde um 23:44.</p></div>
+        </div>
+        <div class="card">
+          <h2>Vergleich ATAS, TradingView, Bot</h2>
+          <p class="note">Jedes Signal des Tages: Hat ATAS es gezeigt, hat TradingView es gemeldet, hat der Demo-Bot gehandelt? Nur Kern-Bausteine, Test-Bausteine stehen unter Bilanz.</p>
+          <div id="rb-vgl"><p class="empty">Wird mit der Abendrunde um 23:44 eingetragen.</p></div>
+        </div>
+      </div>
+      <div class="sec" id="v-vor">
+      <div class="card">
+        <h2>Zeitplan <small id="zp-tag"></small></h2>
+        <p class="note">Uhrzeit Berlin. Handel 02:00–20:00, News-Sperren aus dem Skript.</p>
+        <div class="rows" id="zeitplan"><p class="empty">Noch kein Zeitplan.</p></div>
+      </div>
+      <div class="card">
+        <h2>Offene Signale</h2>
+        <p class="note">ATAS-Signale ohne Ergebnis. Sie bleiben stehen, bis Stop oder Ziel 2 erreicht ist, auch über Nacht. Nur Anzeige, nicht gehandelt. Preise GC.</p>
+        <div id="offene"><p class="empty">Kein Signal offen.</p></div>
+      </div>
+      <div class="card">
+        <h2>Termine der Woche</h2>
+        <p class="note">Der Bot sperrt 2 Std. vor bis 30 Min. nach Arbeitsmarkt, CPI, PPI und Fed-Entscheid.</p>
+        <div class="rows" id="termine"><p class="empty">Noch keine Termine.</p></div>
+      </div>
+      </div>
+    </section>
+
+    <!-- ZONEN -->
+    <section class="sec" id="p-zonen" hidden>
+      <div class="card">
+        <h2>Kauf- und Verkaufszonen</h2>
+        <p class="note">Aus ATAS: wo große Spieler gekauft oder verkauft haben, plus Volumenprofil. Preise im GC-Future, XAUUSD daneben (GC − 31,5 $). Keine Signale, nur Orientierung.</p>
+        <p class="label">Verkauf, über dem aktuellen Goldpreis</p>
+        <div class="sec" id="hz-v"><p class="empty">Noch keine Zonen.</p></div>
+        <p class="label">Kauf, unter dem aktuellen Goldpreis</p>
+        <div class="sec" id="hz-k"><p class="empty">Noch keine Zonen.</p></div>
+      </div>
+      <div class="card">
+        <h2>Preisleiter</h2>
+        <p class="note">Wichtige Ebenen um die aktuelle Range, GC links, XAUUSD rechts.</p>
+        <div class="ladder" id="ladder"></div>
+      </div>
+      <div class="card">
+        <h2>Alle Zonen</h2>
+        <div class="tbox"><table><thead><tr><th>Zone</th><th>Art</th><th class="n">GC</th><th class="n">XAUUSD</th></tr></thead><tbody id="zonen"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- MARKT -->
+    <section class="sec" id="p-markt" hidden>
+      <div class="card">
+        <h2>Gold-Lage</h2>
+        <p class="note">Aus dem ATAS-Indikator.</p>
+        <dl class="kv" id="lage"></dl>
+      </div>
+      <div class="card">
+        <h2>Big Trader</h2>
+        <p class="note">Große Aufträge ab 100 Kontrakten, Bilanz der letzten 24 Std.</p>
+        <div class="sums" id="bt-sum"></div>
+        <div class="rows" id="bigtrader"></div>
+      </div>
+      <div class="card">
+        <h2>Orderflow über Nacht</h2>
+        <dl class="kv" id="orderflow"></dl>
+      </div>
+      <div class="card">
+        <h2>Makro-Wind für Gold</h2>
+        <p class="note">Nur zur Orientierung, kein Filter für den Bot.</p>
+        <div class="makro" id="makro"></div>
+      </div>
+      <div class="card">
+        <h2>Schlagzeilen</h2>
+        <ul class="news" id="news"></ul>
+      </div>
+    </section>
+
+    <!-- BILANZ -->
+    <section class="sec" id="p-bilanz" hidden>
+      <div class="card">
+        <h2>Gehandelt</h2>
+        <p class="note">Was die Bots am letzten Handelstag wirklich gemacht haben, in R und Dollar.</p>
+        <div class="sec" id="gehandelt"><p class="empty">Noch keine Trades eingetragen.</p></div>
+      </div>
+      <div class="card">
+        <h2>ATAS-Signale <span id="lt-rel"></span> <small id="lt-datum"></small></h2>
+        <p class="note">Nur angezeigt und mitgeschrieben, nicht gehandelt. Kern = gleiche Regel wie der Bot. Test = neue Bausteine, die wir nur sammeln.</p>
+        <div class="sums" id="lt-sum"></div>
+        <div class="tbox"><table><thead><tr><th>Zeit</th><th>Baustein</th><th>Ergebnis</th><th class="n">R</th></tr></thead><tbody id="lt"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>TradingView-Signale <span id="tv-rel"></span> <small id="tv-datum"></small></h2>
+        <p class="note">Was das TradingView-Skript gemeldet hat. Nur diese Signale kann der Bot handeln.</p>
+        <div class="sums" id="tv-sum"></div>
+        <div id="tv-list"><p class="empty">Kommt ab heute Abend mit der Abendrunde um 23:44.</p></div>
+      </div>
+      <div class="card">
+        <h2>Form der letzten 5 Tage</h2>
+        <p class="note">Welcher Baustein gerade läuft. Wenige Signale, also nur ein Stimmungsbild.</p>
+        <div class="tbox"><table><thead><tr><th>Baustein</th><th class="n">Sig.</th><th class="n">Ziel</th><th class="n">Stop</th><th class="n">R</th></tr></thead><tbody id="form"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>System-Status</h2>
+        <dl class="kv" id="system"></dl>
+      </div>
+      <div class="card">
+        <h2>Laufende Tests</h2>
+        <div class="rows" id="tests"></div>
+      </div>
+      <div class="card">
+        <h2>Unsere Struktur</h2>
+        <div id="struktur"></div>
+      </div>
+    </section>
+
+    <!-- ERKLÄRUNG -->
+    <section class="sec" id="p-hilfe" hidden>
+      <div class="card">
+        <h2>Wer handelt was?</h2>
+        <dl class="help">
+          <dt>Demo-Bot</dt><dd>Der einzige, der gerade wirklich handelt. TradingView-Skript → PineConnector → MT5-Demokonto (20.000 $). Später kommt dein privater Bot dazu.</dd>
+          <dt>TradingView</dt><dd>Das Skript, das die Signale an den Bot schickt. Es rechnet mit XAUUSD. Nur diese Signale kann der Bot handeln.</dd>
+          <dt>ATAS</dt><dd>Zeigt Signale nur an und schreibt sie ins Tagebuch. ATAS handelt <b>nie</b>. Es rechnet mit dem GC-Future, deshalb löst nicht jedes ATAS-Signal auch in TradingView aus.</dd>
+          <dt>Kern und Test</dt><dd>Kern = gleiche Regel wie der Bot. Test = neue Bausteine, die wir nur sammeln, um später zu prüfen, ob sie etwas taugen.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Die Reiter</h2>
+        <dl class="help">
+          <dt>Heute</dt><dd>Zwei Knöpfe nach Datum (Gestern, Heute, Morgen). Die Vorschau kommt morgens um 7:21 und zeigt Ampel, Zeitplan, Termine und offene Signale. Der Rückblick kommt abends um 23:44 und zeigt, wie der Tag lief, mit dem Vergleich ATAS ↔ TradingView ↔ Bot.</dd>
+          <dt>Zonen</dt><dd>Kauf- und Verkaufszonen aus ATAS. Grün = Kauf, Rot = Verkauf, je kräftiger, desto stärker. „Über/unter dem Preis“ heißt über oder unter dem aktuellen Goldpreis. Das sind keine Signale.</dd>
+          <dt>Markt</dt><dd>Marktphase, Big Trader (Aufträge ab 100 Kontrakten), Orderflow, Makro-Wind und Schlagzeilen. Nur zur Orientierung.</dd>
+          <dt>Bilanz</dt><dd>Oben „Gehandelt“: was die Bots wirklich gemacht haben, in R und Dollar. Darunter die ATAS- und TradingView-Signale je Tag, die Form der Bausteine, der System-Status und laufende Tests.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Begriffe</h2>
+        <dl class="help">
+          <dt>R</dt><dd>Das Risiko eines Trades. +1 R = so viel gewonnen, wie riskiert war. Demo: 1 R = 200 $ (1 % von 20.000 $). Privat: 1 R = 5 $ (0,5 % von 1.000 $).</dd>
+          <dt>GC und XAUUSD</dt><dd>GC ist der Gold-Future (ATAS), XAUUSD der Goldpreis beim Broker (TradingView, MT5). XAUUSD liegt etwa 31,5 $ unter GC.</dd>
+          <dt>Ampel</dt><dd>Grün = normaler Tag. Gelb = Vorsicht, z. B. wichtige Termine. Rot = Finger weg vom Handeln von Hand. Der Bot handelt trotzdem nach seinen Regeln.</dd>
+          <dt>News-Sperre</dt><dd>Der Bot macht 2 Std. vor bis 30 Min. nach Arbeitsmarkt, CPI, PPI und Fed-Entscheid keine neuen Trades.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Wann wird aktualisiert?</h2>
+        <p class="note" style="font-size:14px;color:var(--muted)">Werktags um 7:21 (Vorschau), 10:12, 13:12, 16:12 und 19:12 (Signale, Big Trader, Lage) und 23:44 (Rückblick). In die App kommt es jeweils ein paar Minuten später. Oben rechts steht, von wann der Stand ist.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="Bereiche">
+  <div class="in" role="tablist">
+    <button class="tab" role="tab" id="t-heute" data-p="heute" aria-selected="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>Heute</button>
+    <button class="tab" role="tab" id="t-zonen" data-p="zonen" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 4v4M15 10v4M11 16v4"/></svg>Zonen</button>
+    <button class="tab" role="tab" id="t-markt" data-p="markt" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/><path d="M15 6h5v5"/></svg>Markt</button>
+    <button class="tab" role="tab" id="t-bilanz" data-p="bilanz" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Bilanz</button>
+    <button class="tab" role="tab" id="t-hilfe" data-p="hilfe" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><path d="M12 17.2v.1"/></svg>Erklärung</button>
+  </div>
+</nav>
+
+<script type="application/json" id="snapshot">{"bigtrader":[{"kontrakte":101,"preis":4013.6,"richtung":"Verkauf","ts":"2026-10-26T13:42:20Z","zeit":"26.10. 14:42"},{"kontrakte":231,"preis":4031,"richtung":"Kauf","ts":"2026-10-26T05:03:08Z","zeit":"26.10. 06:03"},{"kontrakte":100,"preis":4011.6,"richtung":"Verkauf","ts":"2026-10-23T19:55:50Z","zeit":"23.10. 21:55"},{"kontrakte":105,"preis":4008.8,"richtung":"Verkauf","ts":"2026-10-23T18:39:45Z","zeit":"23.10. 20:39"},{"kontrakte":123,"preis":4008.4,"richtung":"Verkauf","ts":"2026-10-23T17:15:47Z","zeit":"23.10. 19:15"},{"kontrakte":190,"preis":4020,"richtung":"Verkauf","ts":"2026-10-23T16:46:56Z","zeit":"23.10. 18:46"},{"kontrakte":100,"preis":4011.2,"richtung":"Verkauf","ts":"2026-10-23T14:40:19Z","zeit":"23.10. 16:40"},{"kontrakte":377,"preis":3995.5,"richtung":"Verkauf","ts":"2026-10-23T14:27:23Z","zeit":"23.10. 16:27"},{"kontrakte":181,"preis":4050.1,"richtung":"Kauf","ts":"2026-10-23T13:22:22Z","zeit":"23.10. 15:22"},{"kontrakte":137,"preis":4035,"richtung":"Kauf","ts":"2026-10-23T06:16:49Z","zeit":"23.10. 08:16"}],"demo_tag":[],"handelszonen":[{"bis":4147,"grund":"Am 20. und 21.10. haben Big Trader hier neunmal je über 100 Kontrakte verkauft, dazu liegt der POC der Vorwoche bei 4142.","nr":"V1","seite":"Verkauf","staerke":"stark","von":4127},{"bis":4122,"grund":"Am 22.10. früh kamen hier vier große Verkäufe kurz hintereinander, von hier startete der große Abverkauf.","nr":"V2","seite":"Verkauf","staerke":"mittel","von":4113},{"bis":4093,"grund":"Am 22.10. sechs große Verkäufe zwischen 4077 und 4093, seitdem ist der Preis nie zurückgekommen.","nr":"V3","seite":"Verkauf","staerke":"mittel","von":4077},{"bis":4072,"grund":"Größter Verkauf der Woche (328 Kontrakte bei 4069,6) und dazu der nackte POC vom 22.10. bei 4070, also Volumen, das noch nicht getestet wurde.","nr":"V4","seite":"Verkauf","staerke":"stark","von":4064},{"bis":4048,"grund":"POC und Value-Area-Oberkante vom Vortag plus Range-Oberkante 4044. Heute sind zwei Käufe genau hier ausgestoppt worden, am 23.10. lief ein Range-Verkauf von hier bis Ziel 2.","nr":"V5","seite":"Verkauf","staerke":"stark","von":4038},{"bis":4035,"grund":"Big Trader haben hier am 23.10. viermal und heute früh 231 Kontrakte gekauft. Heute Abend hat die Zone aber nicht sauber gehalten (Kauf bei 4034,6 ausgestoppt).","nr":"K1","seite":"Kauf","staerke":"schwach","von":4030},{"bis":4015,"grund":"Value-Area-Unterkante vom Vortag. Big Trader haben hier dreimal mit über 100 Kontrakten verkauft, der Preis hielt trotzdem und drehte heute zweimal bis Ziel 2 nach oben. Das heißt: Verkäufer wurden aufgefangen.","nr":"K2","seite":"Kauf","staerke":"stark","von":4008},{"bis":4004,"grund":"Range-Unterkante und runde Marke 4000. Heute Nacht lief ein Kauf bei 4001,7 bis Ziel 2.","nr":"K3","seite":"Kauf","staerke":"mittel","von":3998},{"bis":3996,"grund":"Tief der Vorwoche. Am 23.10. hat ein Big Trader 377 Kontrakte bei 3995,5 verkauft, der Preis fiel trotzdem nicht weiter und stieg danach rund 20 $. Fällt diese Zone, liegt darunter keine Marke mehr aus unseren Daten.","nr":"K4","seite":"Kauf","staerke":"stark","von":3989}],"konten":[{"art":"GS v25b PC","konto":"Demo","quelle":"Start 20.000 $, 1 % Risiko. Soll-Auswertung aus dem Demo-Tagebuch, noch nicht die echten MT5-Füllungen","risiko_usd_pro_r":200,"stand_usd":19900},{"art":"GS Live 3 Privat","konto":"Privat","quelle":"Start 1.000 $, 0,5 % Risiko. Wegen der Mindestgröße von 0,01 Lot liegt das echte Risiko eher bei 8 bis 20 $ pro Signal","risiko_usd_pro_r":5,"stand_usd":1000}],"lage":[{"punkt":"Marktphase","wert":"V – seitwärts, volatil"},{"punkt":"4H-Trend","wert":"keiner (ADX 42)"},{"punkt":"Schwankung 2H (ATR)","wert":"0,52 %"},{"punkt":"Range-Baustein heute","wert":"erlaubt (ab 0,40 %)"},{"punkt":"Range-Grenzen","wert":"4.002,3 – 4.044,0 GC"},{"punkt":"Aktive Bausteine","wert":"Top 1, Abprall, Range"},{"punkt":"Letztes Kern-Signal (ATAS, nur Anzeige)","wert":"Range Verkauf 4.025,4 GC (Stop)"}],"makro":[{"name":"Dollar-Index (DXY)","text":"Hält über 101,50. Fällt er darunter, hat Gold Luft nach oben.","wert":"101,81","wind":"Gegenwind","woche":"±0,0 %"},{"name":"US-Rendite 10 Jahre","text":"Zinsen um 5 % machen zinslose Anlagen wie Gold unattraktiv.","wert":"5,00 %","wind":"Gegenwind","woche":"−0,09 Pkt."},{"name":"Fed-Erwartung","text":"Der Markt rechnet im Dezember mit einer Zinserhöhung. Das drückt Gold.","wert":"Pause Mi ≈ 90 %","wind":"Gegenwind","woche":"Erhöhung Dez. ≈ 72 %"},{"name":"VIX (Angst-Kennzahl)","text":"Knapp unter 20. Darüber lief unser Range-Baustein bisher schwach.","wert":"19,45","wind":"neutral","woche":"−2,7 %"},{"name":"Öl (WTI)","text":"Hormus-Krise. Treibt Inflation (schlecht für Gold), bei Eskalation aber Fluchtgeld (gut).","wert":"103,27 $","wind":"gemischt","woche":"+4,3 %"}],"orderflow":[{"kennzahl":"Big Trader letzte 8 Std. (Kauf / Verkauf)","wert":"0 / 101 Kontrakte"},{"kennzahl":"Big Trader letzte 60 Min.","wert":"0 / 0"},{"kennzahl":"Delta letzte 8 Std.","wert":"+65"},{"kennzahl":"Bedeutung","wert":"Große Verkäufer waren aktiv, kleine Käufer halten dagegen."}],"rueckblick":[{"ampel":"Vorsicht (nachträglich)","datum":"26.10.","demo_geprueft":"nein","kurz":"Seitwärts und wild (Phase V). ATAS zeigte nur ein Kern-Signal (Range-Verkauf, wäre −1,0 R), die Test-Bausteine lagen bei +2,0 R. Ob der Demo-Bot gehandelt hat, prüft die Abendrunde um 23:44.","stand":"26.10.2026 21:20","wochentag":"Montag"}],"rueckblick_zeitplan":[{"ergebnis":"Erstes Signal um 02:26 (Absorption, nur Test).","was":"Handelsbeginn","zeit":"02:00"},{"ergebnis":"Wäre Stop gewesen, −1,0 R. Ob der Demo-Bot ihn auch hatte, prüft die Abendrunde.","was":"Range-Verkauf bei 4.025,4 GC (ATAS, Kern-Regel)","zeit":"05:33"},{"ergebnis":"Beide Stop. Die Zone hat als Deckel gehalten.","was":"Zwei Käufe an der Oberkante vom Vortag (Test)","zeit":"13:25–13:33"},{"ergebnis":"Ziel 2, +1,5 R. Verkäufer wurden hier aufgefangen.","was":"Kauf an der Value-Area-Unterkante 4.014 (Test)","zeit":"15:01"},{"ergebnis":"Ein Test-Verkauf bei 4.037,2 GC war noch offen.","was":"Handelsende","zeit":"20:00"}],"schlagzeilen":[{"nr":1,"quelle":"Yahoo Finance","titel":"Gold startet die Fed-Woche auf dem tiefsten Stand seit Juli, −4,1 % zur Vorwoche","wind":"Gegenwind"},{"nr":2,"quelle":"CME FedWatch / Kiplinger","titel":"Fed: Pause am Mittwoch fast sicher, Zinserhöhung im Dezember zu rund 72 % eingepreist","wind":"Gegenwind"},{"nr":3,"quelle":"InvestorIdeas","titel":"Hormus: 28 Angriffe auf Schiffe im Oktober, USA ziehen Personal aus Saudi-Arabien ab","wind":"Rückenwind bei Eskalation"}],"signale5":[{"art":"Test","baustein":"Profil","datum":"20.10.","einstieg":4156.1,"ergebnis":"Stop","id":"20.10. 02:02 Profil","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4152.77,"tag":"2026-10-20","version":"v11","zeit":"02:02","ziel1":4159.43,"ziel2":4162.76},{"art":"Test","baustein":"Absorption","datum":"20.10.","einstieg":4156.6,"ergebnis":"Stop","id":"20.10. 02:40 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4147.75,"tag":"2026-10-20","version":"v11","zeit":"02:40","ziel1":4165.45,"ziel2":4174.29},{"art":"Test","baustein":"Profil","datum":"21.10.","einstieg":4135.4,"ergebnis":"Ziel 1 + Einstand","id":"21.10. 02:15 Profil","im_fenster":"ja","r":0.5,"richtung":"Kauf","stop":4131.66,"tag":"2026-10-21","version":"v11","zeit":"02:15","ziel1":4139.14,"ziel2":4142.88},{"art":"Test","baustein":"Profil","datum":"21.10.","einstieg":4142.3,"ergebnis":"Stop","id":"21.10. 05:33 Profil","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4138.98,"tag":"2026-10-21","version":"v11","zeit":"05:33","ziel1":4145.62,"ziel2":4148.94},{"art":"Test","baustein":"Absorption","datum":"21.10.","einstieg":4141.5,"ergebnis":"Stop","id":"21.10. 06:15 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4133.69,"tag":"2026-10-21","version":"v11","zeit":"06:15","ziel1":4149.31,"ziel2":4157.12},{"art":"Kern","baustein":"Top 1","datum":"21.10.","einstieg":4135.9,"ergebnis":"Ziel 2","id":"21.10. 08:32 Top 1","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":4127.2,"tag":"2026-10-21","version":"v11","zeit":"08:32","ziel1":4144.6,"ziel2":4153.3},{"art":"Kern","baustein":"Top 1","datum":"21.10.","einstieg":4138.3,"ergebnis":"Ziel 1 + Einstand","id":"21.10. 10:18 Top 1","im_fenster":"ja","r":0.5,"richtung":"Kauf","stop":4134.2,"tag":"2026-10-21","version":"v11","zeit":"10:18","ziel1":4142.4,"ziel2":4146.5},{"art":"Kern","baustein":"Top 1","datum":"21.10.","einstieg":4132,"ergebnis":"Ziel 2","id":"21.10. 12:17 Top 1","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":4128.4,"tag":"2026-10-21","version":"v11","zeit":"12:17","ziel1":4135.6,"ziel2":4139.2},{"art":"Test","baustein":"Absorption","datum":"21.10.","einstieg":4136.9,"ergebnis":"Ziel 2","id":"21.10. 12:25 Absorption","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":4128.61,"tag":"2026-10-21","version":"v11","zeit":"12:25","ziel1":4145.19,"ziel2":4153.48},{"art":"Test","baustein":"Profil","datum":"21.10.","einstieg":4156.4,"ergebnis":"Stop","id":"21.10. 14:13 Profil","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4152.37,"tag":"2026-10-21","version":"v11","zeit":"14:13","ziel1":4160.43,"ziel2":4164.46},{"art":"Kern","baustein":"Top 1","datum":"21.10.","einstieg":4146.3,"ergebnis":"Ziel 1 + Einstand","id":"21.10. 17:15 Top 1","im_fenster":"ja","r":0.5,"richtung":"Kauf","stop":4139.4,"tag":"2026-10-21","version":"v11","zeit":"17:15","ziel1":4153.2,"ziel2":4160.1},{"art":"Test","baustein":"Absorption","datum":"21.10.","einstieg":4150.8,"ergebnis":"Stop","id":"21.10. 18:16 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4146.34,"tag":"2026-10-21","version":"v11","zeit":"18:16","ziel1":4155.26,"ziel2":4159.71},{"art":"Test","baustein":"Profil","datum":"22.10.","einstieg":4138.7,"ergebnis":"Stop","id":"22.10. 02:13 Profil","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4134.26,"tag":"2026-10-22","version":"v11","zeit":"02:13","ziel1":4143.14,"ziel2":4147.57},{"art":"Kern","baustein":"Top 1","datum":"22.10.","einstieg":4130.5,"ergebnis":"Ziel 1 + Einstand","id":"22.10. 04:55 Top 1","im_fenster":"ja","r":0.5,"richtung":"Kauf","stop":4126.4,"tag":"2026-10-22","version":"v11","zeit":"04:55","ziel1":4134.6,"ziel2":4138.7},{"art":"Test","baustein":"Absorption","datum":"22.10.","einstieg":4115.5,"ergebnis":"Stop","id":"22.10. 09:13 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4102.33,"tag":"2026-10-22","version":"v11","zeit":"09:13","ziel1":4128.67,"ziel2":4141.85},{"art":"Test","baustein":"Absorption","datum":"22.10.","einstieg":4106.1,"ergebnis":"Stop","id":"22.10. 10:01 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4099.22,"tag":"2026-10-22","version":"v11","zeit":"10:01","ziel1":4112.98,"ziel2":4119.86},{"art":"Kern","baustein":"Ebenen","datum":"22.10.","einstieg":4091.3,"ergebnis":"Ziel 2","id":"22.10. 15:21 Ebenen","im_fenster":"ja","r":1.5,"richtung":"Verkauf","stop":4098,"tag":"2026-10-22","version":"v11","zeit":"15:21","ziel1":4084.6,"ziel2":4077.9},{"art":"Test","baustein":"Absorption","datum":"23.10.","einstieg":4038.1,"ergebnis":"Ziel 1 + Einstand","id":"23.10. 10:49 Absorption","im_fenster":"ja","r":0.5,"richtung":"Kauf","stop":4034.04,"tag":"2026-10-23","version":"v11","zeit":"10:49","ziel1":4042.16,"ziel2":4046.21},{"art":"Test","baustein":"Absorption","datum":"23.10.","einstieg":4037.5,"ergebnis":"Stop","id":"23.10. 11:39 Absorption","im_fenster":"ja","r":-1,"richtung":"Verkauf","stop":4043.85,"tag":"2026-10-23","version":"v11","zeit":"11:39","ziel1":4031.15,"ziel2":4024.8},{"art":"Kern","baustein":"Range","datum":"23.10.","einstieg":4046.5,"ergebnis":"Ziel 2","id":"23.10. 15:22 Range","im_fenster":"ja","r":1.5,"richtung":"Verkauf","stop":4051.94,"tag":"2026-10-23","version":"v11","zeit":"15:22","ziel1":4035.5,"ziel2":4027.17},{"art":"Test","baustein":"Absorption","datum":"23.10.","einstieg":4017.9,"ergebnis":"Stop","id":"23.10. 16:49 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4012.43,"tag":"2026-10-23","version":"v11","zeit":"16:49","ziel1":4023.37,"ziel2":4028.84},{"art":"Test","baustein":"Absorption","datum":"23.10.","einstieg":4008.8,"ergebnis":"Ziel 1 + Einstand","id":"23.10. 17:06 Absorption","im_fenster":"ja","r":0.5,"richtung":"Verkauf","stop":4020.88,"tag":"2026-10-23","version":"v11","zeit":"17:06","ziel1":3996.72,"ziel2":3984.63},{"art":"Test","baustein":"Absorption","datum":"23.10.","einstieg":4017.8,"ergebnis":"Stop","id":"23.10. 18:41 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4011.23,"tag":"2026-10-23","version":"v11","zeit":"18:41","ziel1":4024.37,"ziel2":4030.94},{"art":"Test","baustein":"Absorption","datum":"23.10.","einstieg":4004.8,"ergebnis":"Stop","id":"23.10. 19:40 Absorption","im_fenster":"ja","r":-1,"richtung":"Verkauf","stop":4011.83,"tag":"2026-10-23","version":"v11","zeit":"19:40","ziel1":3997.77,"ziel2":3990.73},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4003.9,"ergebnis":"Stop","id":"26.10. 02:26 Absorption","im_fenster":"ja","r":-1,"richtung":"Verkauf","stop":4014.92,"tag":"2026-10-26","version":"v11","zeit":"02:26","ziel1":3992.88,"ziel2":3981.87},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4001.7,"ergebnis":"Ziel 2","id":"26.10. 03:00 Absorption","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":3994.35,"tag":"2026-10-26","version":"v11","zeit":"03:00","ziel1":4009.05,"ziel2":4016.39},{"art":"Test","baustein":"Profil","datum":"26.10.","einstieg":4014.3,"ergebnis":"Ziel 2","id":"26.10. 03:55 Profil","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":4009.26,"tag":"2026-10-26","version":"v11","zeit":"03:55","ziel1":4019.34,"ziel2":4024.37},{"art":"Kern","baustein":"Range","datum":"26.10.","einstieg":4025.4,"ergebnis":"Stop","id":"26.10. 05:33 Range","im_fenster":"ja","r":-1,"richtung":"Verkauf","stop":4031.9,"tag":"2026-10-26","version":"v11","zeit":"05:33","ziel1":4010.45,"ziel2":3996.77},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4017.7,"ergebnis":"Stop","id":"26.10. 07:29 Absorption","im_fenster":"ja","r":-1,"richtung":"Verkauf","stop":4022.52,"tag":"2026-10-26","version":"v11","zeit":"07:29","ziel1":4012.88,"ziel2":4008.05},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4020.4,"ergebnis":"Ziel 2","id":"26.10. 07:43 Absorption","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":4015.78,"tag":"2026-10-26","version":"v11","zeit":"07:43","ziel1":4025.02,"ziel2":4029.65},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4024.7,"ergebnis":"Ziel 1 + Einstand","id":"26.10. 09:00 Absorption","im_fenster":"ja","r":0.5,"richtung":"Kauf","stop":4018.11,"tag":"2026-10-26","version":"v11","zeit":"09:00","ziel1":4031.29,"ziel2":4037.89},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4033.5,"ergebnis":"Stop","id":"26.10. 13:25 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4027.56,"tag":"2026-10-26","version":"v11","zeit":"13:25","ziel1":4039.44,"ziel2":4045.38},{"art":"Test","baustein":"Profil","datum":"26.10.","einstieg":4039.1,"ergebnis":"Stop","id":"26.10. 13:33 Profil","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4033.89,"tag":"2026-10-26","version":"v11","zeit":"13:33","ziel1":4044.31,"ziel2":4049.51},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4013.9,"ergebnis":"Ziel 1 + Einstand","id":"26.10. 14:43 Absorption","im_fenster":"ja","r":0.5,"richtung":"Verkauf","stop":4021.03,"tag":"2026-10-26","version":"v11","zeit":"14:43","ziel1":4006.77,"ziel2":3999.63},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4010.3,"ergebnis":"Ziel 2","id":"26.10. 15:01 Absorption","im_fenster":"ja","r":1.5,"richtung":"Kauf","stop":4001.31,"tag":"2026-10-26","version":"v11","zeit":"15:01","ziel1":4019.29,"ziel2":4028.29},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4037.2,"ergebnis":"offen","id":"26.10. 18:31 Absorption","im_fenster":"ja","r":null,"richtung":"Verkauf","stop":4045.02,"tag":"2026-10-26","version":"v11","zeit":"18:31","ziel1":4029.38,"ziel2":4021.56},{"art":"Test","baustein":"Absorption","datum":"26.10.","einstieg":4034.6,"ergebnis":"Stop","id":"26.10. 18:56 Absorption","im_fenster":"ja","r":-1,"richtung":"Kauf","stop":4030.08,"tag":"2026-10-26","version":"v11","zeit":"18:56","ziel1":4039.12,"ziel2":4043.64}],"struktur":[{"bereich":"Hauptentwicklung und ATAS","chat":"Gold-System: Hauptentwicklung und ATAS","stand":"Kern GS 3. In ATAS läuft GS 3 ATAS v11 (nur Anzeige und Tagebuch). Morgen-Briefing um 7:33.","zweig":"Gold-System"},{"bereich":"TradingView-Tests","chat":"Gold-System: TradingView-Tests","stand":"Testet gerade die Ideen 7–9 (News und Tagesende), danach den Stresstest.","zweig":"Gold-System"},{"bereich":"Gehirn","chat":"Gold-System: Gehirn aufbauen","stand":"Logbuch und Ideenliste. Abendrunde 23:44, Ideenrunde sonntags 18:47, dieses Cockpit um 7:21.","zweig":"Gold-System"},{"bereich":"Demo über PineConnector","chat":"Live-Handel: Demo über PineConnector","stand":"GS Live 1 (v25b) läuft seit 21.10. auf der MT5-Demo. GS 3 TV wartet aufs Live-Schalten (License ID, neuer Alarm).","zweig":"Live-Handel"},{"bereich":"Privates Echtgeld-Konto","chat":"Live-Handel: Privates Echtgeld-Konto","stand":"Anleitung fertig (GS Live 3 Privat, 0,5 % Risiko). Start erst nach Stresstest und deinem Go.","zweig":"Live-Handel"},{"bereich":"Landingpage mit Higgsfield","chat":"Marke: Landingpage mit Higgsfield","stand":"Wartet auf deine Antwort.","zweig":"Marke"},{"bereich":"Tagesbericht und Monatsrückblick","chat":"Berichte: Tagesbericht / Monatsrückblick GS v25b","stand":"Den Tagesbericht macht jetzt die Abendrunde (23:17 pausiert). Monatsrückblick am 1. um 8:47.","zweig":"Berichte"}],"system":[{"punkt":"Demo GS Live 1 seit 21.10.","wert":"3 Signale, −0,5 R (Stand 23.10.)"},{"punkt":"ATAS GS Live 2 heute","wert":"Range −1,0 R · Test-Baustein Profil −1,0 R"},{"punkt":"ATAS-Tagebuch","wert":"169 Signale gesammelt"},{"punkt":"Hinweis Dienstag","wert":"Top 1 am Dienstag 2021–heute −18,9 R (Idee 1, wartet auf Test)"},{"punkt":"Lücke News-Sperre","wert":"PCE und BIP (Do 13:30) sind nicht gesperrt – Idee 7"}],"tag":[{"ampel":"Vorsicht","datum":"2026-10-27","kurz":"Fed-Woche. Gold auf 3-Monats-Tief, Markt seitwärts und wild.","stand":"26.10.2026 18:30","wochentag":"Dienstag"}],"termine":[{"bot":"handelt","tag":"Di 27.10.","termin":"Aufträge langlebige Güter (Sept.)","wichtig":"mittel","zeit":"13:30"},{"bot":"handelt","tag":"Di 27.10.","termin":"Verbrauchervertrauen Conference Board","wichtig":"mittel","zeit":"15:00"},{"bot":"handelt","tag":"Di 27.10.","termin":"Neubauverkäufe","wichtig":"niedrig","zeit":"15:00"},{"bot":"handelt","tag":"Mi 28.10.","termin":"Handelsbilanz (Sept.)","wichtig":"niedrig","zeit":"13:30"},{"bot":"gesperrt 17:00–19:30","tag":"Mi 28.10.","termin":"Fed-Zinsentscheid","wichtig":"hoch","zeit":"19:00"},{"bot":"gesperrt bis 19:30, danach Handelsende 20:00","tag":"Mi 28.10.","termin":"Pressekonferenz Fed-Chef Warsh","wichtig":"hoch","zeit":"19:30"},{"bot":"handelt – nicht in Sperrliste","tag":"Do 29.10.","termin":"BIP Q3 (erste Schätzung)","wichtig":"hoch","zeit":"13:30"},{"bot":"handelt – nicht in Sperrliste","tag":"Do 29.10.","termin":"PCE-Inflation (Sept.)","wichtig":"hoch","zeit":"13:30"},{"bot":"handelt","tag":"Do 29.10.","termin":"Erstanträge Arbeitslosenhilfe","wichtig":"mittel","zeit":"13:30"},{"bot":"handelt","tag":"Fr 30.10.","termin":"Arbeitskostenindex Q3","wichtig":"mittel","zeit":"13:30"},{"bot":"handelt","tag":"Fr 30.10.","termin":"Chicago-Einkaufsmanagerindex","wichtig":"niedrig","zeit":"14:45"},{"bot":"handelt","tag":"Fr 30.10.","termin":"Rede Daly (Fed San Francisco)","wichtig":"mittel","zeit":"17:00"},{"bot":"handelt","tag":"Fr 30.10.","termin":"Rede Musalem (Fed St. Louis)","wichtig":"mittel","zeit":"17:30"}],"tests":[{"stand":"läuft","test":"PCE/BIP-Sperre, Trades vor News und vor Tagesende schließen (Ideen 7–9)","wer":"TradingView-Tests"},{"stand":"wartet auf Trade-Liste","test":"Stresstest GS 3: Monte Carlo und Kosten-Stress","wer":"Gehirn"},{"stand":"nach Ideen 7–9","test":"Stresstest GS 3: Robustheit, Walk-Forward, ruhige Jahre","wer":"TradingView-Tests"},{"stand":"wartet auf dein Go","test":"Kein Top 1 am Dienstag (Idee 1)","wer":"TradingView-Tests"},{"stand":"erledigt: 2022–20.10.2026 +188,6 R, Rückgang 20,7 %","test":"Realistischer Backtest GS 3","wer":"Hauptentwicklung"}],"trades":[{"baustein":"Top 1","datum":"22.10.","einstieg":4114.35,"konto":"Demo","r":0,"richtung":"Long","status":"storniert","tag":"2026-10-22","zeit":"04:56"},{"baustein":"Ebenen","datum":"22.10.","einstieg":4068.44,"konto":"Demo","r":0.5,"richtung":"Short","status":"gefüllt","tag":"2026-10-22","zeit":"13:22"},{"baustein":"Range","datum":"22.10.","einstieg":4062.17,"konto":"Demo","r":-1,"richtung":"Long","status":"gefüllt","tag":"2026-10-22","zeit":"15:46"}],"tv_signale":[],"zeitplan":[{"hinweis":"Ab jetzt dürfen alle Bausteine handeln.","tag":"Di 27.10.","was":"Handelsbeginn","zeit":"02:00"},{"hinweis":"Keine Sperre, der Bot handelt.","tag":"Di 27.10.","was":"Aufträge langlebige Güter (mittel)","zeit":"13:30"},{"hinweis":"Keine Sperre, der Bot handelt.","tag":"Di 27.10.","was":"Verbrauchervertrauen und Neubauverkäufe","zeit":"15:00"},{"hinweis":"Keine neuen Einstiege mehr. Offene Trades laufen weiter.","tag":"Di 27.10.","was":"Handelsende","zeit":"20:00"},{"hinweis":"Top 1 war dienstags seit 2021 schwach (−18,9 R, Idee 1, noch nicht getestet).","tag":"Di 27.10.","was":"Dienstag-Hinweis","zeit":"ganzer Tag"}],"zonen":[{"art":"Struktur","gc":4558.5,"zone":"Vormonat Hoch"},{"art":"Volumen","gc":4540,"zone":"Nackter POC 03.09."},{"art":"Volumen","gc":4329,"zone":"Nackter POC 25.09."},{"art":"Struktur","gc":4211.2,"zone":"Vorwoche Hoch"},{"art":"Volumen","gc":4142,"zone":"POC Vorwoche"},{"art":"Volumen","gc":4070,"zone":"Nackter POC 22.10."},{"art":"Volumen","gc":4047.3,"zone":"Value Area oben Vortag"},{"art":"Range","gc":4044,"zone":"Range oben"},{"art":"Volumen","gc":4038,"zone":"POC Vortag"},{"art":"Volumen","gc":4014.2,"zone":"Value Area unten Vortag"},{"art":"Range","gc":4002.3,"zone":"Range unten"},{"art":"Rund","gc":4000,"zone":"Runde Marke"},{"art":"Struktur","gc":3989.1,"zone":"Vorwoche Tief"}]}</script>
+<script>
+(() => {
+  const BASIS = 31.5;
+  const D = {};
+  // Tagesstand, der fest in der Seite steckt: damit klappt die App auch ohne Claude-Konto
+  try { const s = JSON.parse(document.getElementById('snapshot').textContent || '{}'); for (const k in s) if (Array.isArray(s[k])) D[k] = s[k]; } catch (e) {}
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = String(txt); return e; };
+  const fmt = (n) => (n == null || n === '' || isNaN(Number(n))) ? '—' : Number(n).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const fmtR = (n) => n == null ? '—' : (n > 0 ? '+' : '') + fmt(n);
+  const rows = (id) => Array.isArray(D[id]) ? D[id] : [];
+  const lvl = (s) => /finger|rot/i.test(s) ? 'bad' : /vorsicht|gelb/i.test(s) ? 'warn' : s ? 'ok' : '';
+  const windCls = (w) => /gegen/i.test(w) ? 'neg' : /rück/i.test(w) ? 'pos' : /gemischt/i.test(w) ? 'warnc' : '';
+  const emptyIf = (box, list, text) => { if (!list.length) { box.replaceChildren(el('p', 'empty', text)); return true; } return false; };
+
+  function showV(v) {
+    $('v-vor').hidden = v !== 'vor'; $('v-rueck').hidden = v !== 'rueck';
+    $('s-vor').setAttribute('aria-selected', String(v === 'vor')); $('s-rueck').setAttribute('aria-selected', String(v === 'rueck'));
+  }
+
+  function kv(id, k, v) {
+    const box = $(id), r = rows(id);
+    box.replaceChildren(...r.flatMap((x) => [el('dt', '', x[k]), el('dd', '', x[v])]));
+    if (!r.length) box.replaceChildren(el('dd', 'empty', 'Noch keine Daten.'));
+  }
+
+  function render() {
+    // Kopf
+    const t = rows('tag')[0];
+    if (t) {
+      const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t.datum || '');
+      const datum = dm ? `${Number(dm[3])}.${Number(dm[2])}.${dm[1]}` : (t.datum || '');
+      $('titel').textContent = `${t.wochentag || ''}, ${datum}`.replace(/^, |, $/g, '') || 'Gold-Cockpit';
+      $('kurz').textContent = t.kurz || '';
+      $('ampeltext').textContent = t.ampel || '—';
+      $('ampel').dataset.l = lvl(t.ampel || '');
+      $('stand').textContent = t.stand ? 'Stand ' + t.stand : '';
+    }
+
+    // Zeitplan
+    const zp = rows('zeitplan');
+    $('zp-tag').textContent = zp[0] ? zp[0].tag || '' : '';
+    if (!emptyIf($('zeitplan'), zp, 'Noch kein Zeitplan.')) {
+      $('zeitplan').replaceChildren(...zp.map((r) => {
+        const d = el('div', 'row');
+        d.append(el('span', 't', r.zeit), el('span', 'w', r.was), el('span'));
+        if (r.hinweis) d.append(el('span', 'x' + (/sperr|kein/i.test(r.hinweis) ? ' warnc' : ''), r.hinweis));
+        return d;
+      }));
+    }
+
+    // Offene Signale
+    const sig = rows('signale5');
+    const offen = sig.filter((r) => r.ergebnis === 'offen');
+    if (!emptyIf($('offene'), offen, 'Kein Signal offen.')) {
+      const tb = el('tbody');
+      offen.forEach((r) => { const tr = el('tr'); tr.append(el('td', '', r.baustein || r.id), el('td', /kauf|long/i.test(r.richtung) ? 'pos' : 'neg', r.richtung), el('td', 'n', fmt(r.einstieg)), el('td', 'n neg', fmt(r.stop)), el('td', 'n pos', fmt(r.ziel2))); tb.append(tr); });
+      const tbl = el('table'); const th = el('thead'); const h = el('tr');
+      [['Signal'], ['Richtung'], ['Einstieg', 'n'], ['Stop', 'n'], ['Ziel 2', 'n']].forEach(([x, c]) => h.append(el('th', c || '', x)));
+      th.append(h); tbl.append(th, tb);
+      const box = el('div', 'tbox'); box.append(tbl); $('offene').replaceChildren(box);
+    }
+
+    // Rückblick
+    const rb = rows('rueckblick')[0];
+    // Knöpfe nach dem echten Datum benennen: Gestern / Heute / Morgen
+    const dayOf = (s) => { s = String(s || ''); let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); if (m) return new Date(+m[1], m[2] - 1, +m[3]); m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})?/.exec(s); if (!m) return null; const now = new Date(); return new Date(m[3] ? +m[3] : now.getFullYear(), m[2] - 1, +m[1]); };
+    const relDay = (s) => { const d = dayOf(s); if (!d) return ''; const n = new Date(); const diff = Math.round((d - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5); return diff === 0 ? 'Heute' : diff === 1 ? 'Morgen' : diff === -1 ? 'Gestern' : ''; };
+    const short = (s) => String(s || '').replace(/^(\d{4})-(\d{2})-(\d{2})$/, (m, y, mo, d) => `${Number(d)}.${Number(mo)}.`);
+    if (t) { $('s-vor-rel').textContent = relDay(t.datum) || t.wochentag || 'Vorschau'; $('s-vor-tag').textContent = `${(t.wochentag || '').slice(0, 2)} ${short(t.datum)} · Vorschau`.trim(); }
+    if (rb) { $('s-rueck-rel').textContent = relDay(rb.datum) || rb.wochentag || 'Rückblick'; $('s-rueck-tag').textContent = `${(rb.wochentag || '').slice(0, 2)} ${short(rb.datum)} · Rückblick`.trim(); }
+    if (!window.__vChosen) { window.__vChosen = true; showV(rb && relDay(rb.datum) === 'Heute' ? 'rueck' : 'vor'); }
+    if (rb) {
+      const rd = short(rb.datum);
+      $('rb-datum').textContent = `${rb.wochentag || ''} ${rd}`.trim();
+      $('rb-ampeltext').textContent = rb.ampel || '—';
+      $('rb-ampel').dataset.l = lvl(rb.ampel || '');
+      $('rb-kurz').textContent = rb.kurz || '';
+    }
+    const rz = rows('rueckblick_zeitplan');
+    if (rz.length) $('rb-zeitplan').replaceChildren(...rz.map((r) => { const d = el('div', 'row'); d.append(el('span', 't', r.zeit), el('span', 'w', r.was), el('span')); if (r.ergebnis) d.append(el('span', 'x', r.ergebnis)); return d; }));
+    // Vergleich ATAS / TradingView / Bot für den Rückblick-Tag
+    if (rb) {
+      const rdShort = short(rb.datum);
+      const sameDay = (r) => short(r.datum || r.tag) === rdShort || short(r.tag) === rdShort;
+      const key = (b) => String(b || '').toLowerCase().split(/[\s(]/)[0];
+      const dir = (s) => /kauf|long|buy/i.test(s) ? 'Kauf' : /verkauf|short|sell/i.test(s) ? 'Verkauf' : String(s || '');
+      const mins = (z) => { const m = /(\d{1,2}):(\d{2})/.exec(String(z || '')); return m ? +m[1] * 60 + +m[2] : null; };
+      const list = [];
+      const add = (src, r) => {
+        const k = key(r.baustein), d = dir(r.richtung), t0 = mins(r.zeit);
+        let hit = list.find((x) => x.k === k && x.d === d && !x[src] && t0 != null && x.t != null && Math.abs(x.t - t0) <= 30);
+        if (!hit) { hit = { k, d, t: t0, zeit: r.zeit, baustein: r.baustein }; list.push(hit); }
+        hit[src] = r;
+      };
+      sig.filter((r) => sameDay(r) && r.art !== 'Test').forEach((r) => add('atas', r));
+      rows('tv_signale').filter(sameDay).forEach((r) => add('tv', r));
+      rows('demo_tag').forEach((r) => add('bot', r));
+      if (list.length) {
+        list.sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+        const tb = el('tbody');
+        const mark = (x) => x ? el('td', 'ok', '✓') : el('td', 'no', '–');
+        list.forEach((x) => {
+          const tr = el('tr'), botR = x.bot ? (x.bot.status === 'storniert' ? null : x.bot.r) : null;
+          const res = x.bot ? (x.bot.status === 'storniert' ? 'storniert' : fmtR(Number(botR)) + ' R') : x.tv && x.tv.r != null ? fmtR(Number(x.tv.r)) + ' R (TV)' : x.atas && x.atas.r != null ? fmtR(Number(x.atas.r)) + ' R (ATAS)' : '—';
+          const rv = x.bot ? botR : x.tv ? x.tv.r : x.atas ? x.atas.r : null;
+          tr.append(el('td', 'n', x.zeit), el('td', '', `${x.baustein || ''} ${x.d}`.trim()), mark(x.atas), mark(x.tv), x.bot || rb.demo_geprueft === 'ja' ? mark(x.bot) : el('td', 'no', 'offen'), el('td', 'n ' + (rv > 0 ? 'pos' : rv < 0 ? 'neg' : ''), res));
+          tb.append(tr);
+        });
+        const tbl = el('table', 'vgl'), th = el('thead'), hr = el('tr');
+        [['Zeit'], ['Signal'], ['ATAS'], ['TV'], ['Bot'], ['Ergebnis', 'n']].forEach(([a, c]) => hr.append(el('th', c || '', a)));
+        th.append(hr); tbl.append(th, tb);
+        const bx = el('div', 'tbox'); bx.append(tbl);
+        const hint = rows('tv_signale').length || rows('demo_tag').length ? [] : [el('p', 'note', 'TradingView und Bot werden in der Abendrunde um 23:44 nachgetragen.')];
+        $('rb-vgl').replaceChildren(bx, ...hint);
+      }
+    }
+    // Termine
+    const te = rows('termine');
+    if (!emptyIf($('termine'), te, 'Noch keine Termine.')) {
+      $('termine').replaceChildren(...te.map((r) => {
+        const d = el('div', 'row');
+        d.append(el('span', 't', `${r.tag || ''} ${r.zeit || ''}`.trim()), el('span', 'w', r.termin), el('span', 'pill ' + String(r.wichtig || '').toLowerCase(), r.wichtig));
+        if (r.bot) d.append(el('span', 'x ' + (/gesperrt/.test(r.bot) ? 'neg' : /nicht in Sperrliste/.test(r.bot) ? 'warnc' : ''), 'Bot: ' + r.bot));
+        return d;
+      }));
+    }
+
+    // Kauf- und Verkaufszonen
+    const hz = rows('handelszonen');
+    const zoneCard = (r, cls) => {
+      const z = el('div', 'zone ' + cls), p = el('div', 'p');
+      const lv = /stark|hoch/i.test(r.staerke) ? 3 : /mittel/i.test(r.staerke) ? 2 : 1;
+      z.classList.add(`z${cls}${lv}`);
+      p.append(el('b', '', `${fmt(r.von)} – ${fmt(r.bis)}`), el('span', '', `XAU ${fmt(Number(r.von) - BASIS)} – ${fmt(Number(r.bis) - BASIS)}`), el('span', `pill st${cls}${lv}`, `${r.seite} ${r.staerke}`));
+      z.append(p, el('p', '', r.grund)); return z;
+    };
+    const side = (s) => hz.filter((r) => r.seite === s).sort((a, b) => Number(b.von) - Number(a.von));
+    const hv = side('Verkauf'), hk = side('Kauf');
+    if (!emptyIf($('hz-v'), hv, 'Keine Verkaufszonen.')) $('hz-v').replaceChildren(...hv.map((r) => zoneCard(r, 'v')));
+    if (!emptyIf($('hz-k'), hk, 'Keine Kaufzonen.')) $('hz-k').replaceChildren(...hk.map((r) => zoneCard(r, 'k')));
+
+    // Alle Zonen
+    const zo = [...rows('zonen')].sort((a, b) => Number(b.gc) - Number(a.gc));
+    $('zonen').replaceChildren(...zo.map((r) => { const tr = el('tr'); tr.append(el('td', '', r.zone), el('td', 'test', r.art), el('td', 'n', fmt(r.gc)), el('td', 'n', fmt(Number(r.gc) - BASIS))); return tr; }));
+    drawLadder(zo, hz);
+
+    // Markt
+    kv('lage', 'punkt', 'wert');
+    kv('orderflow', 'kennzahl', 'wert');
+    kv('system', 'punkt', 'wert');
+    const bt = rows('bigtrader');
+    const last = bt.length ? Math.max(...bt.map((r) => Date.parse(r.ts) || 0)) : 0;
+    const win = bt.filter((r) => last - (Date.parse(r.ts) || 0) <= 864e5);
+    $('bt-sum').replaceChildren(...['Kauf', 'Verkauf'].map((s) => {
+      const g = win.filter((r) => r.richtung === s), d = el('div', 'sum');
+      d.append(el('span', '', `${s} · ${g.length} Aufträge`), el('b', s === 'Kauf' ? 'pos' : 'neg', g.reduce((t, r) => t + Number(r.kontrakte || 0), 0)));
+      return d;
+    }));
+    if (!emptyIf($('bigtrader'), bt, 'Noch keine Aufträge.')) {
+      $('bigtrader').replaceChildren(...bt.map((r) => { const d = el('div', 'row'); d.append(el('span', 't', r.zeit), el('span', 'w ' + (r.richtung === 'Kauf' ? 'pos' : 'neg'), `${r.richtung} ${r.kontrakte}`), el('span', 'num', fmt(r.preis))); return d; }));
+    }
+    const mk = rows('makro');
+    $('makro').replaceChildren(...mk.map((r) => {
+      const c = el('div', 'm'), w = el('div', 'wi');
+      w.append(el('span', windCls(r.wind), r.wind), el('span', '', r.woche));
+      c.append(el('div', 'n', r.name), el('div', 'v', r.wert), w, el('p', '', r.text)); return c;
+    }));
+    const nw = rows('schlagzeilen');
+    $('news').replaceChildren(...nw.map((r) => { const li = el('li'); const q = el('span', 'q'); q.append(el('span', windCls(r.wind), r.wind), document.createTextNode(' · ' + (r.quelle || ''))); li.append(el('span', '', r.titel), q); return li; }));
+
+    // Bilanz
+    const tag = sig.reduce((m, r) => (r.tag > m ? r.tag : m), '');
+    const lt = sig.filter((r) => r.tag === tag);
+    $('lt-datum').textContent = lt[0] ? lt[0].datum || '' : '';
+    $('lt-rel').textContent = lt[0] ? (relDay(lt[0].tag) || '').toLowerCase() : '';
+    const rSum = (list) => Math.round(list.filter((r) => r.r != null).reduce((s, r) => s + Number(r.r), 0) * 10) / 10;
+    const kern = lt.filter((r) => r.art !== 'Test'), test = lt.filter((r) => r.art === 'Test');
+    const sumBox = (items) => items.map(([a, b, c]) => { const d = el('div', 'sum'); d.append(el('span', '', a), el('b', c, b)); return d; });
+    const cl = (v) => v < 0 ? 'neg' : v > 0 ? 'pos' : '';
+    $('lt-sum').replaceChildren(...sumBox([['Gesamt', fmtR(rSum(lt)) + ' R', cl(rSum(lt))], [`Kern (${kern.length})`, fmtR(rSum(kern)) + ' R', cl(rSum(kern))], [`Test (${test.length})`, fmtR(rSum(test)) + ' R', cl(rSum(test))], ['Offen', lt.filter((r) => r.ergebnis === 'offen').length, '']]));
+    $('lt').replaceChildren(...lt.map((r) => {
+      const t2 = el('tr'), b = el('td', r.art === 'Test' || r.sperre ? 'test' : '', `${r.baustein} · ${r.art}` + (r.sperre ? ' (gesperrt: ' + r.sperre + ')' : ''));
+      t2.append(el('td', 'n', r.zeit), b, el('td', r.ergebnis === 'Stop' ? 'neg' : /Ziel/.test(r.ergebnis) ? 'pos' : '', r.ergebnis), el('td', 'n ' + (r.r > 0 ? 'pos' : r.r < 0 ? 'neg' : ''), r.r == null ? '—' : fmtR(Number(r.r))));
+      return t2;
+    }));
+    // TradingView-Signale, eigene Liste wie ATAS
+    const tvAll = rows('tv_signale');
+    if (tvAll.length) {
+      const tvTag = tvAll.reduce((m, r) => (String(r.tag) > m ? String(r.tag) : m), '');
+      const tv = tvAll.filter((r) => String(r.tag) === tvTag);
+      $('tv-datum').textContent = tv[0] ? tv[0].datum || '' : '';
+      $('tv-rel').textContent = (relDay(tvTag) || '').toLowerCase();
+      $('tv-sum').replaceChildren(...sumBox([['Signale', tv.length, ''], ['Gesamt', fmtR(rSum(tv)) + ' R', cl(rSum(tv))]]));
+      const tb = el('tbody');
+      tv.forEach((r) => { const t4 = el('tr'); t4.append(el('td', 'n', r.zeit), el('td', '', `${r.baustein || ''} ${r.richtung || ''}`.trim()), el('td', r.ergebnis === 'Stop' ? 'neg' : /Ziel/.test(r.ergebnis || '') ? 'pos' : '', r.ergebnis || '—'), el('td', 'n ' + cl(r.r), r.r == null ? '—' : fmtR(Number(r.r)))); tb.append(t4); });
+      const tbl = el('table'), th = el('thead'), hr = el('tr');
+      [['Zeit'], ['Signal'], ['Ergebnis'], ['R', 'n']].forEach(([a, c]) => hr.append(el('th', c || '', a)));
+      th.append(hr); tbl.append(th, tb); const bx = el('div', 'tbox'); bx.append(tbl); $('tv-list').replaceChildren(bx);
+    }
+
+    const done = sig.filter((r) => r.ergebnis !== 'offen');
+    const form = [...new Set(done.map((r) => r.baustein))].map((b) => { const g = done.filter((r) => r.baustein === b); return { b, art: g[0].art, n: g.length, z: g.filter((r) => /Ziel/.test(r.ergebnis)).length, s: g.filter((r) => r.ergebnis === 'Stop').length, r: Math.round(g.reduce((s, r) => s + Number(r.r || 0), 0) * 10) / 10 }; }).sort((a, b) => b.r - a.r);
+    $('form').replaceChildren(...form.map((f) => { const t3 = el('tr'); t3.append(el('td', f.art === 'Test' ? 'test' : '', f.b), el('td', 'n', f.n), el('td', 'n', f.z), el('td', 'n', f.s), el('td', 'n ' + (f.r > 0 ? 'pos' : f.r < 0 ? 'neg' : ''), fmtR(f.r))); return t3; }));
+    // Gehandelt je Konto
+    const konten = rows('konten'), trades = rows('trades');
+    const usd = (n) => n == null || isNaN(n) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString('de-DE') + ' $';
+    if (konten.length) {
+      $('gehandelt').replaceChildren(...konten.map((k) => {
+        const mine = trades.filter((t) => t.konto === k.konto);
+        const tg = mine.reduce((m, t) => (t.tag > m ? t.tag : m), '');
+        const day = mine.filter((t) => t.tag === tg);
+        const perR = Number(k.risiko_usd_pro_r) || null;
+        const tUsd = (t) => t.usd != null ? Number(t.usd) : (t.r != null && perR ? Number(t.r) * perR : null);
+        const filled = day.filter((t) => t.status !== 'storniert');
+        const sumR = Math.round(filled.reduce((s, t) => s + Number(t.r || 0), 0) * 100) / 100;
+        const sumUsd = filled.some((t) => tUsd(t) != null) ? filled.reduce((s, t) => s + (tUsd(t) || 0), 0) : null;
+        const c = el('div', 'sec');
+        c.append(el('p', 'label', `${k.konto}${k.art ? ' · ' + k.art : ''}${day[0] ? ' · ' + (day[0].datum || '') : ''}`));
+        const s = el('div', 'sums');
+        [['Kontostand', k.stand_usd != null ? Number(k.stand_usd).toLocaleString('de-DE') + ' $' : '—', ''], ['Tag R', fmtR(sumR), sumR < 0 ? 'neg' : 'pos'], ['Tag Dollar', usd(sumUsd), sumUsd < 0 ? 'neg' : 'pos'], ['Gefüllt', `${filled.length} / ${day.length}`, '']]
+          .forEach(([a, b, cl]) => { const d = el('div', 'sum'); d.append(el('span', '', a), el('b', cl, b)); s.append(d); });
+        c.append(s);
+        if (day.length) {
+          const tb = el('tbody');
+          day.forEach((t) => { const tr = el('tr'), u = tUsd(t); tr.append(el('td', 'n', t.zeit), el('td', '', `${t.baustein || ''} ${t.richtung || ''}`.trim()), el('td', t.status === 'storniert' ? 'test' : '', t.status), el('td', 'n ' + (u > 0 ? 'pos' : u < 0 ? 'neg' : ''), t.status === 'storniert' ? '—' : usd(u))); tb.append(tr); });
+          const tbl = el('table'), th = el('thead'), hr = el('tr');
+          [['Zeit'], ['Signal'], ['Status'], ['Dollar', 'n']].forEach(([x, cl]) => hr.append(el('th', cl || '', x)));
+          th.append(hr); tbl.append(th, tb); const bx = el('div', 'tbox'); bx.append(tbl); c.append(bx);
+        } else c.append(el('p', 'empty', 'Noch keine Trades.'));
+        if (k.quelle) c.append(el('p', 'note', k.quelle + (perR ? ` · 1 R = ${perR.toLocaleString('de-DE')} $` : '')));
+        return c;
+      }));
+    }
+
+    const ts = rows('tests');
+    if (!emptyIf($('tests'), ts, 'Keine Tests eingetragen.')) {
+      $('tests').replaceChildren(...ts.map((r) => { const d = el('div', 'row'); d.append(el('span', 'pill ' + (/erledigt/.test(r.stand) ? 'ok' : /läuft/.test(r.stand) ? 'gold' : ''), /erledigt/.test(r.stand) ? 'fertig' : /läuft/.test(r.stand) ? 'läuft' : 'offen'), el('span', 'w', r.test), el('span'), el('span', 'x', `${r.stand}${r.wer ? ' · ' + r.wer : ''}`)); return d; }));
+    }
+    const st = rows('struktur'), groups = new Map();
+    st.forEach((r) => { if (!groups.has(r.zweig)) groups.set(r.zweig, []); groups.get(r.zweig).push(r); });
+    $('struktur').replaceChildren(...[...groups].map(([z, list]) => { const c = el('div', 'zweig'); c.append(el('h3', '', z), ...list.map((r) => { const i = el('div', 'item'); i.append(el('b', '', r.bereich), el('span', '', r.stand)); return i; })); return c; }));
+  }
+
+  function drawLadder(zo, hz) {
+    const box = $('ladder');
+    if (!zo.length) { box.replaceChildren(el('p', 'empty', 'Noch keine Zonen.')); return; }
+    const lo = zo.find((r) => r.zone === 'Range unten'), hi = zo.find((r) => r.zone === 'Range oben');
+    const gcs = zo.map((r) => Number(r.gc)).sort((a, b) => a - b);
+    const mid = lo && hi ? (Number(lo.gc) + Number(hi.gc)) / 2 : gcs[Math.floor(gcs.length / 2)];
+    const vis = zo.filter((r) => Math.abs(Number(r.gc) - mid) <= 120).sort((a, b) => Number(b.gc) - Number(a.gc));
+    const W = Math.max(300, box.clientWidth || 340), H = Math.max(260, vis.length * 22 + 30), pad = 16;
+    const min = Math.min(...vis.map((r) => Number(r.gc))) - 5, max = Math.max(...vis.map((r) => Number(r.gc))) + 5;
+    const y = (v) => pad + (max - v) / (max - min) * (H - 2 * pad);
+    const x0 = 58, x1 = Math.min(W * 0.36, 140);
+    const NS = 'http://www.w3.org/2000/svg';
+    const s = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
+    const svg = s('svg', { width: '100%', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Preisleiter der Zonen' });
+    hz.forEach((b) => {
+      const v = Number(b.von), t = Number(b.bis); if (t < min || v > max) return;
+      const ya = y(Math.min(t, max)), yb = y(Math.max(v, min));
+      svg.append(s('rect', { x: x0 - 4, width: x1 - x0 + 8, y: ya, height: Math.max(3, yb - ya), rx: 3, fill: b.seite === 'Kauf' ? '#5BC48A' : '#E36C6C', 'fill-opacity': .22 }));
+    });
+    if (lo && hi) svg.append(s('rect', { x: x0, width: x1 - x0, y: y(Number(hi.gc)), height: y(Number(lo.gc)) - y(Number(hi.gc)), rx: 3, fill: '#DEB971', 'fill-opacity': .1 }));
+    const col = { Struktur: '#DEB971', Volumen: '#8FB3E0', Range: '#B8C2CD', Rund: '#7D8996' };
+    let last = -Infinity;
+    vis.forEach((r) => {
+      const v = Number(r.gc), yy = y(v), py = Math.max(yy, last + 16); last = py;
+      svg.append(s('line', { x1: x0, x2: x1, y1: yy, y2: yy, stroke: col[r.art] || '#B8C2CD', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-dasharray': r.art === 'Rund' ? '4 3' : '' }));
+      const a = s('text', { x: x0 - 8, y: yy, dy: '0.35em', 'text-anchor': 'end', fill: '#7D8996', 'font-size': 11 }); a.textContent = fmt(v); svg.append(a);
+      svg.append(s('path', { d: `M${x1 + 2},${yy} L${x1 + 10},${py}`, stroke: '#2A3440', fill: 'none' }));
+      const b = s('text', { x: x1 + 14, y: py, dy: '0.35em', fill: '#F2F2EF', 'font-size': 12 }); b.textContent = `${r.zone} · ${fmt(v - BASIS)}`; svg.append(b);
+    });
+    box.replaceChildren(svg);
+  }
+
+  document.querySelectorAll('.segb').forEach((b) => b.addEventListener('click', () => showV(b.dataset.v)));
+
+  // Reiter
+  const pages = ['heute', 'zonen', 'markt', 'bilanz', 'hilfe'];
+  const show = (p) => {
+    pages.forEach((id) => { $('p-' + id).hidden = id !== p; $('t-' + id).setAttribute('aria-selected', String(id === p)); });
+    window.scrollTo(0, 0);
+    if (p === 'zonen') drawLadder([...rows('zonen')].sort((a, b) => Number(b.gc) - Number(a.gc)), rows('handelszonen'));
+    try { localStorage.setItem('gc-tab', p); } catch (e) {}
+  };
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => show(b.dataset.p)));
+  let start = location.hash.slice(1);
+  if (!pages.includes(start)) { try { start = localStorage.getItem('gc-tab'); } catch (e) {} }
+  if (pages.includes(start)) show(start);
+
+  if (Object.keys(D).length) render();
+
+  // Daten aus dem Cockpit-Spiegel (nur mit Claude-Anmeldung, sonst bleibt der Tagesstand)
+  (async () => {
+    const db = window.claude ? await claude.use('db') : null;
+    if (!db) { if (!Object.keys(D).length) $('stand').textContent = 'noch leer'; return; }
+    db.collection('daten').onSnapshot((snap) => {
+      snap.docs.forEach((d) => { const b = d.data(); if (b && Array.isArray(b.rows)) D[d.id] = b.rows; });
+      if (snap.empty) return;
+      render();
+    }, () => {});
+  })();
+})();
+</script>
+
+<div id="gate" style="position:fixed;inset:0;z-index:99;background:#0B1016;display:flex;align-items:center;justify-content:center;padding:24px">
+  <form id="gate-f" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;font-family:Inter,system-ui,sans-serif">
+    <div style="font-family:Manrope,system-ui,sans-serif;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:#DEB971">Gold-Cockpit</div>
+    <label for="gate-pw" style="color:#B8C2CD;font-size:14px">Passwort</label>
+    <input id="gate-pw" type="password" autocomplete="current-password" style="font-size:17px;padding:12px 14px;border-radius:10px;border:1px solid #2A3440;background:#131B24;color:#F2F2EF">
+    <button style="font:700 15px Manrope,system-ui,sans-serif;padding:12px;border-radius:10px;border:0;background:#DEB971;color:#0B1016">Öffnen</button>
+    <p id="gate-err" style="color:#E36C6C;font-size:13px;margin:0" hidden>Falsches Passwort.</p>
+  </form>
+</div>
+<script>
+(() => {
+  const H = '05b96294f7de688b00915557d6942a9030676b16cf7cce38793612fe996b295c';
+  const hex = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const open = () => document.getElementById('gate').remove();
+  try { if (localStorage.getItem('gc-ok') === H) open(); } catch (e) {}
+  const f = document.getElementById('gate-f');
+  if (f) f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (await hex(document.getElementById('gate-pw').value.trim()) === H) { try { localStorage.setItem('gc-ok', H); } catch (e2) {} open(); }
+    else document.getElementById('gate-err').hidden = false;
+  });
+})();
+</script>
+
+</body></html>
