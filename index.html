@@ -4,6 +4,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-title" content="Gold-Cockpit">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 </head><body>
 <title>Gold-Cockpit</title>
@@ -638,33 +641,6 @@ td.n,th.n{text-align:right;white-space:nowrap}
       render();
     }, () => {});
   })();
-})();
-</script>
-
-<div id="gate" style="position:fixed;inset:0;z-index:99;background:#0B1016;display:flex;align-items:center;justify-content:center;padding:24px">
-  <form id="gate-f" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;font-family:Inter,system-ui,sans-serif">
-    <div style="font-family:Manrope,system-ui,sans-serif;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:#DEB971">Gold-Cockpit</div>
-    <label for="gate-pw" style="color:#B8C2CD;font-size:14px">Passwort</label>
-    <input id="gate-pw" type="password" autocomplete="current-password" style="font-size:17px;padding:12px 14px;border-radius:10px;border:1px solid #2A3440;background:#131B24;color:#F2F2EF">
-    <button style="font:700 15px Manrope,system-ui,sans-serif;padding:12px;border-radius:10px;border:0;background:#DEB971;color:#0B1016">Öffnen</button>
-    <p id="gate-err" style="color:#E36C6C;font-size:13px;margin:0" hidden>Falsches Passwort.</p>
-  </form>
-</div>
-<script>
-(() => {
-  const H = '05b96294f7de688b00915557d6942a9030676b16cf7cce38793612fe996b295c';
-  const hex = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
-  const open = () => document.getElementById('gate').remove();
-  try { if (localStorage.getItem('gc-ok') === H) open(); } catch (e) {}
-  // Passwort im Link (#…) öffnet direkt, damit das Home-Bildschirm-Symbol nie fragt
-  const k = decodeURIComponent(location.hash.slice(1));
-  if (k && document.getElementById('gate')) hex(k).then((h) => { if (h === H) { try { localStorage.setItem('gc-ok', H); } catch (e) {} open(); } });
-  const f = document.getElementById('gate-f');
-  if (f) f.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (await hex(document.getElementById('gate-pw').value.trim()) === H) { try { localStorage.setItem('gc-ok', H); } catch (e2) {} open(); }
-    else document.getElementById('gate-err').hidden = false;
-  });
 })();
 </script>
 
